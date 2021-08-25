@@ -106,14 +106,32 @@ def cacl_bp_xt(v, is_semtpy=1):
     return calc_s(s, v)
 
 
-def cacl_bp_nj(v):
-    '''
-    ut
-    '''
-    df = DF
-    df = df[df.type == '潜血']
-    s = df[(v > df.start) & (v <= df.end)].iloc[0:1]
-    return calc_s(s, v)
+def cacl_bp_nj(value):
+    # df = DF
+    # df = df[df.type == '潜血']
+    # s = df[(v > df.start) & (v <= df.end)].iloc[0:1]
+    status = dict()
+    status['白细胞'] = '正常' if value['白细胞'] == '阴性' else '异常'
+    status['亚硝酸盐'] = '正常' if value['亚硝酸盐'] == '阴性' else '异常'
+    status['尿胆原'] = '正常' if value['尿胆原'] == '3.2/16' else '异常'
+    status['蛋白质'] = '正常' if value['蛋白质'] == '阴性' else '异常'
+    status['pH值'] = '正常'
+    status['潜血'] = '正常' if value['潜血'] == '阴性' else '异常'
+    status['比重'] = '正常' if value['比重'] == '1.015' or value['比重'] == '1.020' or value['比重'] == '1.025' else '异常'
+    status['胴体'] = '正常' if value['胴体'] == '阴性' else '异常'
+    status['胆红素'] = '正常' if value['胆红素'] == '阴性' else '异常'
+    status['葡萄糖'] = '正常' if value['葡萄糖'] == '阴性' else '异常'
+    status['维生素C'] = '正常' if value['维生素C'] == '阴性' else '异常'
+    status['微量白蛋白'] = '正常' if value['微量白蛋白'] == '0' or value['微量白蛋白'] == '30' else '异常'
+    status['肌酐'] = '正常' if value['肌酐'] == '4.4' or value['肌酐'] == '17.7' else '异常'
+    status['钙离子'] = '正常'
+
+    status['score'] = 100
+    for i in status:
+        status['score'] = status['score'] if status[i] == '正常' else status['score'] - 7
+    status['score'] += 7
+
+    return status
 
 
 def cacl_bp_wd(v):
@@ -140,6 +158,11 @@ def cacl_bp_uricacid(v):
             return 60
     else:
         return 60
+
+
+def cacl_bp_twt(v):
+    score = 100 if 36.0 < v < 37.3 else 60
+    return score
 
 
 def cacl_xl(v):
@@ -198,7 +221,7 @@ def get_status_ss(v):
 
 # 尿液
 def get_status_ny(v):
-    return get_status(cacl_bp_nj(v))
+    return cacl_bp_nj(v)
 
 
 # 体温
@@ -211,7 +234,13 @@ def get_status_uricacid(v):
     return get_status(cacl_bp_uricacid(v))
 
 
+# 体温贴
+def get_status_twt(v):
+    return get_status(cacl_bp_twt(v))
+
+
 if __name__ == '__main__':
     import doctest
 
     print(doctest.testmod(verbose=False, report=False))
+

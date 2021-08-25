@@ -7,7 +7,7 @@ import requests
 from requests.adapters import HTTPAdapter
 import sseclient
 
-from base import tool_yy, tool_sgtz, tool_xy, tool_xd, tool_id, tool_urine, tool_wdj, tool_uricacid
+from base import tool_yy, tool_sgtz, tool_xy, tool_xd, tool_id, tool_urine, tool_wdj, tool_uricacid, tool_twt
 from base.management.commands import tool_it
 from base.tool_health_data import get_record
 from requests.packages.urllib3.util import Retry
@@ -74,10 +74,11 @@ def _post_to_socket(mac, data):
     #    print(log_data)
     print('_post_to_socket function...')
     data = get_record(log_data)
-    #    print(data)
+
     if data:
         #        if data.get('address'): print(data)
-        print('upload data:', data)
+        print('uploading data...')
+        pprint.pprint(data)
         return rpost(url=url, json=data, headers={'Content-Type': 'application/json;charset=UTF-8'})
 
 
@@ -159,7 +160,14 @@ devices = {
         'connected': 0,
         'connection_type': 'public',
         'url_notify': 'http://{ip}/gatt/nodes/{mac}/handle/42/value/0100?',
-    }
+    },
+    '2C:AB:33:C3:D3:CE': {
+        'name': 'thermometer paste',
+        'type': 9,
+        'connected': 0,
+        'connection_type': 'public',
+        'url_notify': 'http://{ip}/gatt/nodes/{mac}/handle/35/value/0100?',
+    },
 
 }
 
@@ -213,22 +221,26 @@ def notify_data(devices, lock):
             data = tool_id.parse_result(value)
 
         elif device_type == 6:
-            print('start to test urine...')
+            # print('start to test urine...')
             data = tool_urine.parse_result(value)
 
         elif device_type == 7:
-            print('start to test thermometer')
+            # print('start to test thermometer')
             data = tool_wdj.parse_result(value)
 
         elif device_type == 8:
-            print('start to test uric acid')
+            # print('start to test uric acid')
             data = tool_uricacid.parse_result(value)
+
+        elif device_type == 9:
+            # print('start to test twt...')
+            data = tool_twt.parse_result(value)
 
         else:
             data = None
         if data:
             #            data['_mac_addr'] = mac
-            print('notify_data function...')
+            # print('notify_data function...')
             pprint.pprint(data)
             _post_to_socket(mac, data)
         else:
@@ -329,5 +341,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 

@@ -55,7 +55,12 @@ devices = {
         'name': 'uric_acid',
         'type': 9,
         'id': 'ae107d91695746969d0478573844dc6b'
-    }
+    },
+    '2C:AB:33:C3:D3:CE': {
+        'name': 'thermometer_paste',
+        'type': 10,
+        'id': '9108970d18fd48bbb1b1c95d20617514'
+    },
 }
 
 
@@ -339,49 +344,119 @@ def parse_urine(d):
     r = d.get('log')
     # disconnected, return uncompleted data
     if r.get('connected') == 1: return parse_connected(d)
-    print('d_log_BLD_data: {}'.format(r.get('BLD')))
-    if not r.get('BLD'):
-        print('d_log_BLD_data: {}'.format(r.get('BLD')))
-        return
-    qx = round(r['BLD'])
-    bld = r.get('BLD')
-    urine_status = get_status_ny(qx)
-    print('urine_status: {}'.format(urine_status))
+    if r.get('disconnected'): return
 
-    if bld <= 10:
-        score = '微量（非溶血）'
-    elif bld <= 25:
-        score = '微量（溶血）'
-    elif bld <= 80:
-        score = '+1'
-    elif bld <= 200:
-        score = '+2'
-    else:
-        score = '+3'
+    urine_status = get_status_ny(r)
+    overall_status = 1 if urine_status['score'] > 80 else 2
 
     result_data = {
         'id': uuid.uuid1().hex,
         'user_id': 'c58bf33ab49d11ebbe2100d8612d18b0',
         'device_id': devices.get(d.get('mac')).get('id'),
         'type': devices.get(d.get('mac')).get('type'),
-        'status': urine_status,
+        'status': overall_status,
         'iscomplete': 1,
         'create_at': int(time.time() * 1000),
-        'vallist': [
-            {
-                "label": "BLD",
-                "val": bld,
-                "unit": "Cells/μl",
-                "status": urine_status,
-            }
-        ],
+        'vallist': get_vallist(r, urine_status),
         'tagname': '',
         'remark': '',
-        'score': score,
+        'score': urine_status['score'],
     }
-    print('result_data: {}'.format(result_data))
+    # print('result_data: {}'.format(result_data))
 
     return result_data
+
+
+# get urine's vallist
+def get_vallist(r, urine_status):
+    vallist = [
+                {
+                    "label": "白细胞",
+                    "val": r["白细胞"],
+                    "unit": "Cells/μl",
+                    "status": urine_status['白细胞']
+                },
+                {
+                    "label": "亚硝酸盐",
+                    "val": r["亚硝酸盐"],
+                    "unit": "",
+                    "status": urine_status['亚硝酸盐']
+                },
+                {
+                    "label": "尿胆原",
+                    "val": r["尿胆原"],
+                    "unit": "μmol/l",
+                    "status": urine_status['尿胆原']
+                },
+                {
+                    "label": "蛋白质",
+                    "val": r["蛋白质"],
+                    "unit": "g/l",
+                    "status": urine_status['蛋白质']
+                },
+                {
+                    "label": "pH值",
+                    "val": r["pH值"],
+                    "unit": "",
+                    "status": urine_status['pH值']
+                },
+                {
+                    "label": "潜血",
+                    "val": r["潜血"],
+                    "unit": "Cells/μl",
+                    "status": urine_status['潜血']
+                },
+                {
+                    "label": "比重",
+                    "val": r["比重"],
+                    "unit": "",
+                    "status": urine_status['比重']
+                },
+                {
+                    "label": "胴体",
+                    "val": r["胴体"],
+                    "unit": "mmol/l",
+                    "status": urine_status['胴体']
+                },
+                {
+                    "label": "胆红素",
+                    "val": r["胆红素"],
+                    "unit": "μmol/l",
+                    "status": urine_status['胆红素']
+                },
+                {
+                    "label": "葡萄糖",
+                    "val": r["葡萄糖"],
+                    "unit": "mmol/l",
+                    "status": urine_status['葡萄糖']
+                },
+                {
+                    "label": "维生素C",
+                    "val": r["维生素C"],
+                    "unit": "mmol/l",
+                    "status": urine_status['维生素C']
+                },
+                {
+                    "label": "微量白蛋白",
+                    "val": r["微量白蛋白"],
+                    "unit": "mg/l",
+                    "status": urine_status['微量白蛋白']
+                },
+                {
+                    "label": "肌酐",
+                    "val": r["肌酐"],
+                    "unit": "mmol/l",
+                    "status": urine_status['肌酐']
+                },
+                {
+                    "label": "钙离子",
+                    "val": r["钙离子"],
+                    "unit": "mmol/l",
+                    "status": urine_status['钙离子']
+                }
+    ]
+
+    return vallist
 
 
 def parse_thermometer(d):
@@ -463,12 +538,50 @@ def parse_uric_acid(d):
     return result_data
 
 
+def parse_thermometer_paste(d):
+    r = d.get('log')
+    if r.get('connected') == 1: return parse_connected(d)
+    if r.get('disconnected') or r.get('data') is None: return
+
+    if r.get('data') > 37.5:
+        # print('体温过高，异常...')
+        score = 50
+    elif r.get('data') > 36.0:
+        # print('体温正常...')
+        score = 100
+    else:
+        # print('体温过低，异常...')
+        score = 60
+
+    result_data = {
+        'id': uuid.uuid1().hex,
+        'user_id': 'c58bf33ab49d11ebbe2100d8612d18b0',
+        'device_id': devices.get(d.get('mac')).get('id'),
+        'type': devices.get(d.get('mac')).get('type'),
+        'status': get_status_twt(r.get('data')),
+        'iscomplete': 1,
+        'create_at': int(time.time() * 1000),
+        'vallist': [
+            {
+                "label": '持续体温',
+                "val": r.get('data'),
+                "unit": "℃",
+                "status": get_status_twt(r.get('data')),
+            }
+        ],
+        'tagname': '',
+        'remark': '',
+        'score': score,
+    }
+    return result_data
+
+
 def get_type(mac):
     return devices.get(mac).get('type')
 
 
 def get_method_name(mac):
-    print('get_method_name:', 'parse_' + devices.get(mac).get('name'))
+    # print('get_method_name:', 'parse_' + devices.get(mac).get('name'))
     return 'parse_' + devices.get(mac).get('name')
 
 
@@ -574,4 +687,5 @@ if __name__ == '__main__':
     # print(r1)
     # test_run()
     test_post()
+
 
